@@ -52,6 +52,7 @@ static void ben(void * unusedpointer, unsigned long unusedint)
         int i;
         kprintf("Hi, I'm Ben\n");
 
+        // Modify the order of lock acquiring.
         for (i = 0; i < NUM_LOOPS; i++) {
                 lock_acquire(locka);
                 lock_acquire(lockb);
