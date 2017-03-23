@@ -14,11 +14,12 @@
    be preserved as noted for our later testing to work */
 
 struct paintorder {
-        unsigned int requested_tints[PAINT_COMPLEXITY]; /* Do not change */
-        int go_home_flag;                               /* Do not change */
-        struct paintcan can;                            /* Do not change */
+    unsigned int requested_tints[PAINT_COMPLEXITY]; /* Do not change */
+    int go_home_flag;                               /* Do not change */
+    struct paintcan can;                            /* Do not change */
 
-        /* This struct can be extended with your own entries below here */ 
+    /* This struct can be extended with your own entries below here */ 
+    struct semaphore * finished;
 
 };
 
