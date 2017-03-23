@@ -15,8 +15,17 @@
  */
 
 /* Declare any globals you need here (e.g. locks, etc...) */
+struct paintorder * order_buffer[NCUSTOMERS];
+struct semaphore * mutex;
+struct semaphore * empty;
+struct semaphore * full;
+int next_write;
+int next_read;
 
 
+struct cv * tint_container_counter_cv;
+struct lock * tint_container_counter_lock;
+int tint_container_flag_counter[NCOLOURS];
 /*
  * **********************************************************************
  * FUNCTIONS EXECUTED BY CUSTOMER THREADS
@@ -37,7 +46,6 @@ void order_paint(struct paintorder *order)
         (void) order; /* Avoid compiler warning, remove when used */
         panic("You need to write some code!!!!\n");
 }
-
 
 
 /*
@@ -75,13 +83,50 @@ struct paintorder *take_order(void)
 
 void fill_order(struct paintorder *order)
 {
+    lock_acquire(tint_container_counter_lock);
+    int tint_available_flag = 0;
+    int i;
+    while(tint_available_flag == 0){
+        tint_available_flag = 1;
+        for(i=0;i<PAINT_COMPLEXITY;i++){
+            if(order->requested_tints[i] == 0){
+                continue;
+            }
+            if(tint_container_flag_counter[order->requested_tints[i]-1] > 0){
+                tint_available_flag = 0;
+                break;
+            }
+        }
 
-        /* add any sync primitives you need to ensure mutual exclusion
-           holds as described */
+        if(tint_available_flag == 0){
+            cv_wait(tint_container_counter_cv, tint_container_counter_lock);
+        }
+    }
 
-        /* the call to mix must remain */
-        mix(order);
+    for(i=0;i<PAINT_COMPLEXITY;i++){
+        if(order->requested_tints[i] ==0){
+            continue;
+        }
+        tint_container_flag_counter[order->requested_tints[i]-1]++;
+    }
 
+    // release counter lock here, so that other could deal with other colors 
+    // at the same time
+    lock_release(tint_container_counter_lock);
+
+    mix(order);  
+
+    lock_acquire(tint_container_counter_lock);
+    
+    for(i=0;i<PAINT_COMPLEXITY;i++){
+        if(order->requested_tints[i] ==0){
+            continue;
+        }
+        tint_container_flag_counter[order->requested_tints[i]-1] = 0;
+    }
+
+    cv_signal(tint_container_counter_cv, tint_container_counter_lock);
+    lock_release(tint_container_counter_lock); 
 }
 
 
@@ -94,8 +139,7 @@ void fill_order(struct paintorder *order)
 
 void serve_order(struct paintorder *order)
 {
-        (void) order; /* avoid a compiler warning, remove when you
-                         start */
+    V(order->finished);
 }
 
 
@@ -117,7 +161,19 @@ void serve_order(struct paintorder *order)
 
 void paintshop_open(void)
 {
+    mutex = sem_create("mutex", 1);
+    empty = sem_create("empty", NCUSTOMERS);
+    full = sem_create("full", 0);
+    next_write = 0;
+    next_read = 0;
 
+    int i;
+    for(i=0; i<NCOLOURS; i++){
+        tint_container_flag_counter[i] = 0;
+    }
+
+    tint_container_counter_lock = lock_create("tint_container_counter_lock");
+    tint_container_counter_cv = cv_create("tint_container_counter_cv");
 }
 
 /*
@@ -129,6 +185,10 @@ void paintshop_open(void)
 
 void paintshop_close(void)
 {
-
+    sem_destroy(mutex);
+    sem_destroy(empty);
+    sem_destroy(full);
+    lock_destroy(tint_container_counter_lock);
+    cv_destroy(tint_container_counter_cv);
 }
 

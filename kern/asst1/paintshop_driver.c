@@ -74,9 +74,9 @@ static void customer(void *unusedpointer, unsigned long customernum)
 
                 /* erase ingredients list on can and select a colour in terms of tints */
                 for (j = 0; j < PAINT_COMPLEXITY; j++) {
-                        order.requested_tints[j] = 0;
+                        order.requested_tints[j] = j%10+1;
                 }
-                order.requested_tints[0] = RED;
+                order.requested_tints[0] = 0;
 
 
                 /* order the paint, this blocks until the order is filled */
