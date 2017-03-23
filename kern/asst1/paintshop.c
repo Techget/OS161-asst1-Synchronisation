@@ -58,12 +58,12 @@ void order_paint(struct paintorder *order)
     V(full);
 
     // Has customer wait to be processed.
-    // kprintf("finished semaphore count value: %d\n",order->finished->sem_count);
     if(order->finished->sem_count>0){
         panic("semaphore wrong!!!");
     }
-    P(order->finished);
 
+    P(order->finished);
+    // after activate consumer, cleanup the semaphore
     sem_destroy(order->finished);
 }
 
@@ -167,45 +167,6 @@ void fill_order(struct paintorder *order)
     cv_signal(tint_container_counter_cv, tint_container_counter_lock);
     lock_release(tint_container_counter_lock);   
 }
-
-// void fill_order(struct paintorder *order)
-// {
-
-//         /* add any sync primitives you need to ensure mutual exclusion
-//            holds as described */
-
-//         /* the call to mix must remain */
-
-//         lock_acquire(tint_container_lock);
-//         // int res_all_avail_flag = 0;
-//         // int i;
-//         // while(res_all_avail_flag == 0){
-//         //     res_all_avail_flag = 1;
-
-//         //     for(i=0;i<PAINT_COMPLEXITY;i++){
-//         //         if(tint_container[order->requested_tints[i]]>0){
-//         //             res_all_avail_flag = 0;
-//         //             break;
-//         //         }
-//         //     }
-
-//         //     cv_wait(tint_container_cv, tint_container_lock);
-//         // }
-
-//         // for(i=0;i<PAINT_COMPLEXITY;i++){
-//         //     tint_container[order->requested_tints[i]]++;
-//         // }
-
-//         mix(order);
-
-//         // for(i=0;i<PAINT_COMPLEXITY;i++){
-//         //     tint_container[order->requested_tints[i]] = 0;
-//         // }
-
-//         lock_release(tint_container_lock);
-//         // cv_signal(tint_container_cv, tint_container_lock);      
-// }
-
 
 /*
  * serve_order()
