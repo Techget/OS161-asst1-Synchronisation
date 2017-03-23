@@ -43,10 +43,28 @@ int tint_container_flag_counter[NCOLOURS];
 
 void order_paint(struct paintorder *order)
 {
-        (void) order; /* Avoid compiler warning, remove when used */
-        panic("You need to write some code!!!!\n");
-}
+    order->finished = sem_create("finished", 0);
 
+    P(empty);
+    P(mutex);
+
+    order_buffer[next_write] = order;
+
+    next_write++;
+    if(next_write >= NCUSTOMERS) next_write = 0;
+
+    V(mutex);
+    V(full);
+
+    // Has customer wait to be processed.
+    if(order->finished->sem_count>0){
+        panic("semaphore wrong!!!");
+    }
+
+    P(order->finished);
+    // after activate consumer, cleanup the semaphore
+    sem_destroy(order->finished);
+}
 
 /*
  * **********************************************************************
@@ -65,6 +83,17 @@ void order_paint(struct paintorder *order)
 struct paintorder *take_order(void)
 {
         struct paintorder *ret = NULL;
+
+        P(full);
+        P(mutex);
+
+        ret = order_buffer[next_read];
+
+        next_read++;
+        if(next_read >= NCUSTOMERS) next_read = 0;
+
+        V(mutex);
+        V(empty);
 
         return ret;
 }
@@ -97,12 +126,16 @@ void fill_order(struct paintorder *order)
                 break;
             }
         }
-
+        // kprintf("order number, %d\n",order->test);
         if(tint_available_flag == 0){
+            // kprintf("cv_wait, %d\n",order->test);
             cv_wait(tint_container_counter_cv, tint_container_counter_lock);
         }
     }
 
+    // kprintf("out of while loop\n");
+    // Set the counter and lock the corresponding tint lock.
+    // should be able to acquire lock here
     for(i=0;i<PAINT_COMPLEXITY;i++){
         if(order->requested_tints[i] ==0){
             continue;
@@ -114,10 +147,11 @@ void fill_order(struct paintorder *order)
     // at the same time
     lock_release(tint_container_counter_lock);
 
-    mix(order);  
+    mix(order);
 
+    // modify counter, reset corresponding bit to 0
     lock_acquire(tint_container_counter_lock);
-    
+
     for(i=0;i<PAINT_COMPLEXITY;i++){
         if(order->requested_tints[i] ==0){
             continue;
@@ -126,9 +160,8 @@ void fill_order(struct paintorder *order)
     }
 
     cv_signal(tint_container_counter_cv, tint_container_counter_lock);
-    lock_release(tint_container_counter_lock); 
+    lock_release(tint_container_counter_lock);   
 }
-
 
 /*
  * serve_order()
@@ -158,6 +191,11 @@ void serve_order(struct paintorder *order)
  * to staff and customers. Typically, allocation and initialisation of
  * synch primitive and variable.
  */
+
+// struct cv * tint_container_counter_cv;
+// struct lock * tint_container_counter_lock;
+// struct lock * tint_locks[NCOLOURS];
+// int tint_container_flag_counter[NCOLOURS];
 
 void paintshop_open(void)
 {
