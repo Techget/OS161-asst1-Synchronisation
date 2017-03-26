@@ -1,6 +1,5 @@
 /* This file will contain your solution. Modify it as you wish. */
 #include <types.h>
-#include <synch.h>
 #include "producerconsumer_driver.h"
 
 /* Declare any variables you need here to keep track of and
@@ -8,13 +7,6 @@
    below. You can change this if you choose another implementation. */
 
 static struct pc_data buffer[BUFFER_SIZE];
-
-struct semaphore * mutex;
-struct semaphore * empty;
-struct semaphore * full;
-
-int next_write;
-int next_read;
 
 
 /* consumer_receive() is called by a consumer to request more data. It
@@ -25,17 +17,11 @@ struct pc_data consumer_receive(void)
 {
         struct pc_data thedata;
 
-        P(full);
-        P(mutex);
+        (void) buffer; /* remove this line when you start */
 
-        thedata.item1 = buffer[next_read].item1;
-        thedata.item2 = buffer[next_read].item2;
-
-        next_read++;
-        if(next_read >= BUFFER_SIZE) next_read = 0;
-
-        V(mutex);
-        V(empty);
+        /* FIXME: this data should come from your buffer, obviously... */
+        thedata.item1 = 1;
+        thedata.item2 = 2;
 
         return thedata;
 }
@@ -45,18 +31,10 @@ struct pc_data consumer_receive(void)
 
 void producer_send(struct pc_data item)
 {
-        P(empty);
-        P(mutex);
-
-        buffer[next_write].item1 = item.item1;
-        buffer[next_write].item2 = item.item2;
-
-        next_write++;
-        if(next_write >= BUFFER_SIZE) next_write = 0;
-
-        V(mutex);
-        V(full);
+        (void) item; /* Remove this when you add your code */
 }
+
+
 
 
 /* Perform any initialisation (e.g. of global data) you need
@@ -64,23 +42,10 @@ void producer_send(struct pc_data item)
 
 void producerconsumer_startup(void)
 {
-        mutex = sem_create("mutex", 1);
-        empty = sem_create("empty", BUFFER_SIZE);
-        full = sem_create("full", 0);
-        next_write = 0;
-        next_read = 0;
-        int i;
-        for(i=0; i<BUFFER_SIZE; i++){
-                buffer[i].item1 = 0;
-                buffer[i].item2 = 0;
-        }  
 }
 
 /* Perform any clean-up you need here */
 void producerconsumer_shutdown(void)
 {
-        sem_destroy(mutex);
-        sem_destroy(empty);
-        sem_destroy(full);
 }
 
